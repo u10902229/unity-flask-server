@@ -23,7 +23,11 @@ def index():
 @app.route('/upload', methods=['POST'])
 def upload():
     data = request.get_json()
-    print("收到資料：", data)
+    
+    print("\n📥【收到互動資料】")
+    for key, value in data.items():
+        print(f"{key:<18}: {value}")
+    print("📝 已記錄至 CSV\n")
 
     # 將缺少欄位補空值
     def get(key):
@@ -40,3 +44,4 @@ def upload():
         ])
 
     return jsonify({"message": "✅ 資料寫入成功"})
+
