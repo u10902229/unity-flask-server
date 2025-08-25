@@ -11,6 +11,7 @@ if not os.path.exists(csv_file_path):
     with open(csv_file_path, mode='w', newline='') as f:
         writer = csv.writer(f)
         writer.writerow([
+            "user_id",
             "task_type", "interaction_type", "trial_no", "target_index", "grid_index",
             "reaction_time", "level_name", "start_time", "end_time", "gaze_target_x", "gaze_target_y", "gaze_target_z",
             "gaze_x", "gaze_y", "gaze_z", "process", "appear_time", "timestamp"
@@ -36,6 +37,7 @@ def upload():
     with open(csv_file_path, mode='a', newline='') as f:
         writer = csv.writer(f)
         writer.writerow([
+            get("user_id"), 
             get("task_type"), get("interaction_type"), get("trial_no"), get("target_index"), get("grid_index"),
             get("reaction_time"), get("level_name"), get("start_time"), get("end_time"),
             get("gaze_target_x"), get("gaze_target_y"), get("gaze_target_z"),
@@ -44,4 +46,3 @@ def upload():
         ])
 
     return jsonify({"message": "✅ 資料寫入成功"})
-
