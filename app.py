@@ -77,11 +77,22 @@ def aggregate():
         # ---------- 1. 眼動 (practiceeye) ----------
         eye_data = df[df["level_name"].str.strip().str.lower() == "practiceeye"].copy()
         eye_accuracy = None
+
+        print("=== practiceeye 原始資料 ===")
+        print(eye_data.head(20))
+        print("資料筆數:", len(eye_data))
         if not eye_data.empty:
             cols = ["gaze_target_x", "gaze_target_y", "gaze_target_z",
             "gaze_x", "gaze_y", "gaze_z"]
+
             for c in cols:
                 eye_data[c] = pd.to_numeric(eye_data[c], errors="coerce")
+
+            print("欄位型別：")
+            print(eye_data[cols].dtypes)
+            print("NaN 數量：")
+            print(eye_data[cols].isna().sum())    
+
             eye_data = eye_data.dropna(subset=cols)
 
             if not eye_data.empty:    
