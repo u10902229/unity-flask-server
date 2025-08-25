@@ -75,18 +75,26 @@ def aggregate():
         results = {}
 
         # ---------- 1. 眼動 (practiceeye) ----------
-        eye_data = df[df["level_name"] == "practiceeye"].copy()
+        eye_data = df[df["level_name"].str.strip().str.lower() == "practiceeye"].copy()
+        eye_accuracy = None
         if not eye_data.empty:
-            eye_data["error"] = np.sqrt(
-                (eye_data["gaze_target_x"] - eye_data["gaze_x"])**2 +
-                (eye_data["gaze_target_y"] - eye_data["gaze_y"])**2 +
-                (eye_data["gaze_target_z"] - eye_data["gaze_z"])**2
-            )
-            user_eye = eye_data.groupby("user_id")["error"].mean().reset_index()
-            results["eye_accuracy"] = {
-                "per_user": user_eye.to_dict(orient="records"),
-                "overall_avg": user_eye["error"].mean()
-            }
+            cols = ["gaze_target_x", "gaze_target_y", "gaze_target_z",
+            "gaze_x", "gaze_y", "gaze_z"]
+            for c in cols:
+                eye_data[c] = pd.to_numeric(eye_data[c], errors="coerce")
+            eye_data = eye_data.dropna(subset=cols)
+
+            if not eye_data.empty:    
+                eye_data["error"] = np.sqrt(
+                    (eye_data["gaze_target_x"] - eye_data["gaze_x"])**2 +
+                    (eye_data["gaze_target_y"] - eye_data["gaze_y"])**2 +
+                    (eye_data["gaze_target_z"] - eye_data["gaze_z"])**2
+                )
+                user_eye = eye_data.groupby("user_id")["error"].mean().reset_index()
+                results["eye_accuracy"] = {
+                    "per_user": user_eye.to_dict(orient="records"),
+                    "overall_avg": user_eye["error"].mean()
+                }   
 
         # ---------- 2. 語音 (practicevoice) ----------
         voice_data = df[df["level_name"] == "practicevoice"].copy()
