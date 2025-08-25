@@ -78,34 +78,35 @@ def aggregate():
         eye_data = df[df["level_name"].str.strip().str.lower() == "practiceeye"].copy()
         eye_accuracy = None
 
-        print("=== practiceeye 原始資料 ===")
-        print(eye_data.head(20))
-        print("資料筆數:", len(eye_data))
         if not eye_data.empty:
             cols = ["gaze_target_x", "gaze_target_y", "gaze_target_z",
-            "gaze_x", "gaze_y", "gaze_z"]
+                    "gaze_x", "gaze_y", "gaze_z"]
 
+            # 🔹 強制轉成數值
             for c in cols:
                 eye_data[c] = pd.to_numeric(eye_data[c], errors="coerce")
 
-            print("欄位型別：")
-            print(eye_data[cols].dtypes)
-            print("NaN 數量：")
-            print(eye_data[cols].isna().sum())    
+            # 🔹 檢查是否全是 NaN
+            if eye_data[cols].isna().all().all():
+                print("⚠️ 所有 gaze 欄位都是 NaN，無法計算")
+            else:
+                # 🔹 先把 NaN 填 0 避免整列消失（或用 dropna 視情況）
+                eye_data = eye_data.fillna(0)
 
-            eye_data = eye_data.dropna(subset=cols)
-
-            if not eye_data.empty:    
+                # 🔹 計算誤差
                 eye_data["error"] = np.sqrt(
                     (eye_data["gaze_target_x"] - eye_data["gaze_x"])**2 +
                     (eye_data["gaze_target_y"] - eye_data["gaze_y"])**2 +
                     (eye_data["gaze_target_z"] - eye_data["gaze_z"])**2
                 )
+
                 user_eye = eye_data.groupby("user_id")["error"].mean().reset_index()
-                results["eye_accuracy"] = {
+                eye_accuracy = {
                     "per_user": user_eye.to_dict(orient="records"),
                     "overall_avg": user_eye["error"].mean()
-                }   
+                }
+
+                results["eye_accuracy"] = eye_accuracy
 
         # ---------- 2. 語音 (practicevoice) ----------
         voice_data = df[df["level_name"] == "practicevoice"].copy()
