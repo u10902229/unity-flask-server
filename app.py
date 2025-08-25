@@ -75,7 +75,7 @@ def aggregate():
         results = {}
 
         # ---------- 1. 眼動 (practiceeye) ----------
-        eye_data = df[df["level_name"].str.strip().str.lower() == "practiceeye"].copy()
+        eye_data = df[df["level_name"].str.strip().str.lower() == "practicegaze"].copy()
         eye_accuracy = None
 
         if not eye_data.empty:
