@@ -19,7 +19,7 @@ def get_sheet(sheet_id):
     creds_dict = json.loads(creds_json)
 
     scope = [
-        "https://spreadsheets.google.com/feeds",
+        "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive"
     ]
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
