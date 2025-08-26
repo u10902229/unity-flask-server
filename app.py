@@ -178,3 +178,16 @@ def aggregate():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+
+@app.route('/test_sheets', methods=['GET'])
+def test_sheets():
+    try:
+        SHEET_ID = "1C9CJMjEiXeqQYdVYojtpX0yVQdn6W4H4KuQ7PlsiGGU"
+        ws = get_sheet(SHEET_ID)
+
+        # 只取前 5 行，避免資料太多
+        rows = ws.get_all_values()[:5]
+        return jsonify({"status": "success", "preview": rows}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
