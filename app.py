@@ -105,7 +105,7 @@ def aggregate():
         results = {}
 
         # ---------- 1. 眼動 ----------
-        eye_data = df[df["level_name"].str.strip().str.lower() == "practiceeye"].copy()
+        eye_data = df[df["level_name"].str.strip().str.lower() == "practicgaze"].copy()
         if not eye_data.empty:
             cols = ["gaze_target_x", "gaze_target_y", "gaze_target_z",
                     "gaze_x", "gaze_y", "gaze_z"]
