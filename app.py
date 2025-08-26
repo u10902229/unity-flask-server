@@ -67,7 +67,7 @@ def upload():
 
     # 2️⃣ 同步到 Google Sheets
     try:
-        SHEET_ID = "👉 在這裡換成你的 Google Sheet ID 👈"
+        SHEET_ID = "1C9CJMjEiXeqQYdYVojtpX0yVQdn6W4H4KuQ7PlsiGGU"
         ws = get_sheet(SHEET_ID)
         ws.append_row(row)
         print("✅ 已同步到 Google Sheets")
