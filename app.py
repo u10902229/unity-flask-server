@@ -176,3 +176,26 @@ def aggregate():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route('/list_sheets', methods=['GET'])
+def list_sheets():
+    try:
+        SHEET_ID = "1C9CJMjEiXeqQYdVYojtpX0yVQdn6W4H4KuQ7PlsiGGU"  # 你的試算表 ID
+        sa_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
+        creds_dict = json.loads(sa_json)
+        scope = [
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"
+        ]
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+        gc = gspread.authorize(creds)
+
+        sh = gc.open_by_key(SHEET_ID)
+        worksheets = [ws.title for ws in sh.worksheets()]
+        return jsonify({
+            "spreadsheet_title": sh.title,
+            "worksheets": worksheets
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
