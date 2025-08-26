@@ -11,7 +11,7 @@ app = Flask(__name__)
 csv_file_path = "interaction_log.csv"
 
 # ---------------- Google Sheets 初始化 ----------------
-def get_sheet(spreadsheet_id: str):
+def get_sheet(spreadsheet_id: str, worksheet_title: str = None):
     """固定抓 Google Sheet 裡的 UnityInteractionLog worksheet"""
     sa_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
     if not sa_json:
@@ -26,7 +26,11 @@ def get_sheet(spreadsheet_id: str):
     gc = gspread.authorize(creds)
 
     sh = gc.open_by_key(spreadsheet_id)
-    ws = sh.worksheet("UnityInteractionLog")   # ✅ 永遠抓這張
+    # 如果沒有特別指定 worksheet，直接抓第一個
+    if worksheet_title:
+        ws = sh.worksheet(worksheet_title)
+    else:
+        ws = sh.sheet1
     return ws
 
 
