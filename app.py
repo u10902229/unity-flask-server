@@ -1,7 +1,6 @@
 from flask import Flask, request, jsonify
 import csv
 import os
-from datetime import datetime
 import pandas as pd
 import numpy as np
 import json
@@ -12,21 +11,22 @@ app = Flask(__name__)
 csv_file_path = "interaction_log.csv"
 
 # ---------------- Google Sheets 初始化 ----------------
-def get_sheet(spreadsheet_id: str, worksheet_title: str = None):
+def get_sheet(spreadsheet_id: str):
+    """固定抓 Google Sheet 裡的 UnityInteractionLog worksheet"""
     sa_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
     if not sa_json:
         raise RuntimeError("❌ GOOGLE_SERVICE_ACCOUNT_JSON not set in environment variables")
 
     creds_dict = json.loads(sa_json)
     scope = [
-        "https://spreadsheets.google.com/feeds",
+        "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive"
     ]
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     gc = gspread.authorize(creds)
 
     sh = gc.open_by_key(spreadsheet_id)
-    ws = sh.sheet1 if worksheet_title is None else sh.worksheet(worksheet_title)
+    ws = sh.worksheet("UnityInteractionLog")   # ✅ 永遠抓這張
     return ws
 
 
@@ -67,7 +67,7 @@ def upload():
 
     # 2️⃣ 同步到 Google Sheets
     try:
-        SHEET_ID = "👉 在這裡填入你的 Google Sheet ID 👈"
+        SHEET_ID = "👉 在這裡換成你的 Google Sheet ID 👈"
         ws = get_sheet(SHEET_ID)
         ws.append_row(row)
         print("✅ 已同步到 Google Sheets")
@@ -81,16 +81,14 @@ def upload():
 @app.route('/aggregate', methods=['GET'])
 def aggregate():
     try:
-        SHEET_ID = "👉 在這裡填入你的 Google Sheet ID 👈"
+        SHEET_ID = "👉 在這裡換成你的 Google Sheet ID 👈"
         ws = get_sheet(SHEET_ID)
 
-        # 讀取 Google Sheets 全部資料（包含表頭）
         rows = ws.get_all_values()
         if len(rows) <= 1:
             return jsonify({"message": "Google Sheet is empty"}), 200
 
-        # 轉成 DataFrame
-        df = pd.DataFrame(rows[1:], columns=rows[0])  # 第一列當表頭
+        df = pd.DataFrame(rows[1:], columns=rows[0])
         if df.empty:
             return jsonify({"message": "Google Sheet empty"}), 200
 
@@ -102,7 +100,7 @@ def aggregate():
         results = {}
 
         # ---------- 1. 眼動 ----------
-        eye_data = df[df["level_name"].str.strip().str.lower() == "practiceeye"].copy()
+        eye_data = df[df["level_name"].str.strip().str.lower().isin(["practiceeye","practicegaze"])].copy()
         if not eye_data.empty:
             cols = ["gaze_target_x", "gaze_target_y", "gaze_target_z",
                     "gaze_x", "gaze_y", "gaze_z"]
