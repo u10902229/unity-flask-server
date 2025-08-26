@@ -12,7 +12,6 @@ csv_file_path = "interaction_log.csv"
 
 # ---------------- Google Sheets 初始化 ----------------
 def get_sheet(spreadsheet_id: str, worksheet_title: str = None):
-    """固定抓 Google Sheet 裡的 UnityInteractionLog worksheet"""
     sa_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
     if not sa_json:
         raise RuntimeError("❌ GOOGLE_SERVICE_ACCOUNT_JSON not set in environment variables")
@@ -26,11 +25,13 @@ def get_sheet(spreadsheet_id: str, worksheet_title: str = None):
     gc = gspread.authorize(creds)
 
     sh = gc.open_by_key(spreadsheet_id)
-    # 如果沒有特別指定 worksheet，直接抓第一個
+
+    # 👉 預設抓第一個分頁，避免名稱不符導致 404
     if worksheet_title:
         ws = sh.worksheet(worksheet_title)
     else:
         ws = sh.sheet1
+
     return ws
 
 
@@ -64,15 +65,15 @@ def upload():
         get("process"), get("appear_time"), get("timestamp")
     ]
 
-    # 1️⃣ 照舊寫入 CSV（方便本地 debug）
+    # 1️⃣ 寫入 CSV（方便本地 debug）
     with open(csv_file_path, mode='a', newline='') as f:
         writer = csv.writer(f)
         writer.writerow(row)
 
     # 2️⃣ 同步到 Google Sheets
     try:
-        SHEET_ID = "1C9CJMjEiXeqQYdYVojtpX0yVQdn6W4H4KuQ7PlsiGGU"
-        ws = get_sheet(SHEET_ID)
+        SHEET_ID = "1C9CJMjEiXeqQYdYVojtpX0yVQdn6W4H4KuQ7PlsiGGU"  # ✅ 固定你的試算表
+        ws = get_sheet(SHEET_ID)  # 👉 預設抓第一個分頁
         ws.append_row(row)
         print("✅ 已同步到 Google Sheets")
     except Exception as e:
@@ -85,8 +86,8 @@ def upload():
 @app.route('/aggregate', methods=['GET'])
 def aggregate():
     try:
-        SHEET_ID = "👉 在這裡換成你的 Google Sheet ID 👈"
-        ws = get_sheet(SHEET_ID)
+        SHEET_ID = "1C9CJMjEiXeqQYdYVojtpX0yVQdn6W4H4KuQ7PlsiGGU"
+        ws = get_sheet(SHEET_ID)  # 👉 預設抓第一個分頁
 
         rows = ws.get_all_values()
         if len(rows) <= 1:
@@ -104,7 +105,7 @@ def aggregate():
         results = {}
 
         # ---------- 1. 眼動 ----------
-        eye_data = df[df["level_name"].str.strip().str.lower().isin(["practiceeye","practicegaze"])].copy()
+        eye_data = df[df["level_name"].str.strip().str.lower() == "practiceeye"].copy()
         if not eye_data.empty:
             cols = ["gaze_target_x", "gaze_target_y", "gaze_target_z",
                     "gaze_x", "gaze_y", "gaze_z"]
@@ -178,28 +179,5 @@ def aggregate():
 
         return jsonify(results), 200
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route('/list_sheets', methods=['GET'])
-def list_sheets():
-    try:
-        SHEET_ID = "1C9CJMjEiXeqQYdVYojtpX0yVQdn6W4H4KuQ7PlsiGGU"  # 你的試算表 ID
-        sa_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
-        creds_dict = json.loads(sa_json)
-        scope = [
-            "https://www.googleapis.com/auth/spreadsheets",
-            "https://www.googleapis.com/auth/drive"
-        ]
-        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-        gc = gspread.authorize(creds)
-
-        sh = gc.open_by_key(SHEET_ID)
-        worksheets = [ws.title for ws in sh.worksheets()]
-        return jsonify({
-            "spreadsheet_title": sh.title,
-            "worksheets": worksheets
-        }), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
