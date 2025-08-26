@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import csv
 import os
+from datetime import datetime
 import pandas as pd
 import numpy as np
 import json
@@ -25,13 +26,10 @@ def get_sheet(spreadsheet_id: str, worksheet_title: str = None):
     gc = gspread.authorize(creds)
 
     sh = gc.open_by_key(spreadsheet_id)
-
-    # 👉 預設抓第一個分頁，避免名稱不符導致 404
     if worksheet_title:
-        ws = sh.worksheet(worksheet_title)
+        ws = sh.worksheet(worksheet_title)   # 指定分頁
     else:
-        ws = sh.sheet1
-
+        ws = sh.sheet1                       # 預設第一個分頁（目前是「工作表1」）
     return ws
 
 
@@ -65,15 +63,15 @@ def upload():
         get("process"), get("appear_time"), get("timestamp")
     ]
 
-    # 1️⃣ 寫入 CSV（方便本地 debug）
+    # 1️⃣ 照舊寫入 CSV（方便本地 debug）
     with open(csv_file_path, mode='a', newline='') as f:
         writer = csv.writer(f)
         writer.writerow(row)
 
     # 2️⃣ 同步到 Google Sheets
     try:
-        SHEET_ID = "1C9CJMjEiXeqQYdYVojtpX0yVQdn6W4H4KuQ7PlsiGGU"  # ✅ 固定你的試算表
-        ws = get_sheet(SHEET_ID)  # 👉 預設抓第一個分頁
+        SHEET_ID = "1C9CJMjEiXeqQYdYVojtpX0yVQdn6W4H4KuQ7PlsiGGU"  # ✅ 你的試算表 ID
+        ws = get_sheet(SHEET_ID, "工作表1")                       # ✅ 指定「工作表1」
         ws.append_row(row)
         print("✅ 已同步到 Google Sheets")
     except Exception as e:
@@ -87,13 +85,15 @@ def upload():
 def aggregate():
     try:
         SHEET_ID = "1C9CJMjEiXeqQYdYVojtpX0yVQdn6W4H4KuQ7PlsiGGU"
-        ws = get_sheet(SHEET_ID)  # 👉 預設抓第一個分頁
+        ws = get_sheet(SHEET_ID, "工作表1")
 
+        # 讀取 Google Sheets 全部資料（包含表頭）
         rows = ws.get_all_values()
         if len(rows) <= 1:
             return jsonify({"message": "Google Sheet is empty"}), 200
 
-        df = pd.DataFrame(rows[1:], columns=rows[0])
+        # 轉成 DataFrame
+        df = pd.DataFrame(rows[1:], columns=rows[0])  # 第一列當表頭
         if df.empty:
             return jsonify({"message": "Google Sheet empty"}), 200
 
