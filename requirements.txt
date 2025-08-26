@@ -2,3 +2,5 @@ Flask==2.2.5
 gunicorn
 pandas
 numpy
+gspread
+oauth2client
