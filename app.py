@@ -1,7 +1,6 @@
 from flask import Flask, request, jsonify
 import csv
 import os
-from datetime import datetime
 import pandas as pd
 import numpy as np
 import json
@@ -48,14 +47,13 @@ def upload():
         print(f"{key:<18}: {value}")
     print("📝 已記錄\n")
 
-    # 防呆：避免 None
     def get(key):
         return str(data.get(key, "") or "")
 
     # ⚠️ 必須和 Google Sheet 表頭完全一致（21 欄）
     row = [
         get("user_id"),
-        get("device_type"),  # 👈 新增裝置型號
+        get("device_type"),
         get("task_type"), get("interaction_type"), get("trial_no"),
         get("target_index"), get("grid_index"),
         get("reaction_time"), get("level_name"),
@@ -66,7 +64,6 @@ def upload():
         get("process"), get("appear_time"), get("timestamp")
     ]
 
-    # Debug
     print("📤 準備寫入 Google Sheets:", row)
     print("➡️ 欄位數:", len(row))
 
@@ -77,8 +74,8 @@ def upload():
 
     # 2️⃣ 同步到 Google Sheets
     try:
-        SHEET_ID = "1C9CJMjEiXeqQYdYVojtpX0yVQdn6W4H4KuQ7PlsiGGU"  # 你的試算表 ID
-        ws = get_sheet(SHEET_ID, "工作表1")                       # 分頁名稱要正確
+        SHEET_ID = "1C9CJMjEiXeqQYdYVojtpX0yVQdn6W4H4KuQ7PlsiGGU"  # 換成你的試算表 ID
+        ws = get_sheet(SHEET_ID, "工作表1")
         ws.append_row(row, value_input_option="USER_ENTERED")
         print("✅ 已同步到 Google Sheets")
     except Exception as e:
@@ -126,49 +123,49 @@ def aggregate():
                     (eye_data["gaze_target_y"] - eye_data["gaze_y"])**2 +
                     (eye_data["gaze_target_z"] - eye_data["gaze_z"])**2
                 )
-                user_eye = eye_data.groupby(["user_id", "device_type"])["error"].mean().reset_index()
+                device_eye = eye_data.groupby("device_type")["error"].mean().reset_index()
                 results["eye_accuracy"] = {
-                    "per_user": user_eye.to_dict(orient="records"),
-                    "overall_avg": user_eye["error"].mean()
+                    "per_device": device_eye.to_dict(orient="records"),
+                    "overall_avg": device_eye["error"].mean()
                 }
 
         # ---------- 2. 語音 ----------
         voice_data = df[df["level_name"] == "practicevoice"].copy()
         if not voice_data.empty:
-            user_voice = voice_data.groupby(["user_id", "device_type"])["interaction_result"].mean().reset_index()
-            user_voice.rename(columns={"interaction_result": "accuracy"}, inplace=True)
+            device_voice = voice_data.groupby("device_type")["interaction_result"].mean().reset_index()
+            device_voice.rename(columns={"interaction_result": "accuracy"}, inplace=True)
             results["voice_accuracy"] = {
-                "per_user": user_voice.to_dict(orient="records"),
-                "overall_avg": user_voice["accuracy"].mean()
+                "per_device": device_voice.to_dict(orient="records"),
+                "overall_avg": device_voice["accuracy"].mean()
             }
 
         # ---------- 3. 點擊 ----------
         point_data = df[df["level_name"] == "practicepoint"].copy()
         if not point_data.empty:
-            user_point = point_data.groupby(["user_id", "device_type"])["interaction_result"].mean().reset_index()
-            user_point.rename(columns={"interaction_result": "accuracy"}, inplace=True)
+            device_point = point_data.groupby("device_type")["interaction_result"].mean().reset_index()
+            device_point.rename(columns={"interaction_result": "accuracy"}, inplace=True)
             results["hand_point_accuracy"] = {
-                "per_user": user_point.to_dict(orient="records"),
-                "overall_avg": user_point["accuracy"].mean()
+                "per_device": device_point.to_dict(orient="records"),
+                "overall_avg": device_point["accuracy"].mean()
             }
 
         # ---------- 4. 拖移 ----------
         grab_data = df[df["level_name"] == "practicegrab"].copy()
         if not grab_data.empty:
-            user_grab = grab_data.groupby(["user_id", "device_type"])["interaction_result"].mean().reset_index()
-            user_grab.rename(columns={"interaction_result": "accuracy"}, inplace=True)
+            device_grab = grab_data.groupby("device_type")["interaction_result"].mean().reset_index()
+            device_grab.rename(columns={"interaction_result": "accuracy"}, inplace=True)
             results["hand_drag_accuracy"] = {
-                "per_user": user_grab.to_dict(orient="records"),
-                "overall_avg": user_grab["accuracy"].mean()
+                "per_device": device_grab.to_dict(orient="records"),
+                "overall_avg": device_grab["accuracy"].mean()
             }
 
         # ---------- 5. 優惠券九宮格 ----------
         coupon_data = df[df["level_name"].str.lower() == "coupongame"].copy()
         if not coupon_data.empty:
-            user_coupon = coupon_data.groupby(["user_id", "device_type", "grid_index"])["reaction_time"].mean().reset_index()
-            coupon_overall = user_coupon.groupby("grid_index")["reaction_time"].mean().reset_index()
+            device_coupon = coupon_data.groupby(["device_type", "grid_index"])["reaction_time"].mean().reset_index()
+            coupon_overall = device_coupon.groupby("grid_index")["reaction_time"].mean().reset_index()
             results["coupon_reaction_time"] = {
-                "per_user": user_coupon.to_dict(orient="records"),
+                "per_device": device_coupon.to_dict(orient="records"),
                 "overall_avg": coupon_overall.to_dict(orient="records")
             }
 
@@ -177,10 +174,10 @@ def aggregate():
                          "eye+voice", "hand+voice", "hand+eye", "hand+eye+voice"]
         collab_data = df[df["level_name"].isin(collab_levels)].copy()
         if not collab_data.empty:
-            user_collab = collab_data.groupby(["user_id", "device_type", "level_name"])["reaction_time"].mean().reset_index()
-            collab_overall = user_collab.groupby("level_name")["reaction_time"].mean().reset_index()
+            device_collab = collab_data.groupby(["device_type", "level_name"])["reaction_time"].mean().reset_index()
+            collab_overall = device_collab.groupby("level_name")["reaction_time"].mean().reset_index()
             results["collaboration_latency"] = {
-                "per_user": user_collab.to_dict(orient="records"),
+                "per_device": device_collab.to_dict(orient="records"),
                 "overall_avg": collab_overall.to_dict(orient="records")
             }
 
