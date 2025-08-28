@@ -162,8 +162,21 @@ def aggregate():
         # ---------- 5. 優惠券九宮格 ----------
         coupon_data = df[df["level_name"].str.lower() == "coupongame"].copy()
         if not coupon_data.empty:
-            device_coupon = coupon_data.groupby(["device_type", "grid_index"])["reaction_time"].mean().reset_index()
-            coupon_overall = device_coupon.groupby("grid_index")["reaction_time"].mean().reset_index()
+            grid_map = {
+                "1": "1左上", "2": "2中上", "3": "3右上",
+                "4": "4左中", "5": "5中心", "6": "6右中",
+                "7": "7左下", "8": "8中下", "9": "9右下"
+            }
+            coupon_data["grid_label"] = coupon_data["grid_index"].map(grid_map)
+
+            user_coupon = coupon_data.groupby(
+                ["user_id", "device_type", "grid_index", "grid_label"]
+            )["reaction_time"].mean().reset_index()
+
+            coupon_overall = coupon_data.groupby(
+                ["grid_index", "grid_label"]
+            )["reaction_time"].mean().reset_index()
+
             results["coupon_reaction_time"] = {
                 "per_device": device_coupon.to_dict(orient="records"),
                 "overall_avg": coupon_overall.to_dict(orient="records")
