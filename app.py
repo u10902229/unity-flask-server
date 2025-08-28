@@ -178,7 +178,7 @@ def aggregate():
             )["reaction_time"].mean().reset_index()
 
             results["coupon_reaction_time"] = {
-                "per_device": device_coupon.to_dict(orient="records"),
+                "per_device": user_coupon.to_dict(orient="records"),
                 "overall_avg": coupon_overall.to_dict(orient="records")
             }
 
