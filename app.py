@@ -169,22 +169,26 @@ def aggregate():
             }
             coupon_data["grid_label"] = coupon_data["grid_index"].map(grid_map)
 
+            # 先算每位受試者在每個九宮格的平均
             user_coupon = coupon_data.groupby(
                 ["user_id", "device_type", "grid_index", "grid_label"]
             )["reaction_time"].mean().reset_index()
 
+            # 👇 再跨受試者平均 → 每種眼鏡的平均
             device_coupon = user_coupon.groupby(
                 ["device_type", "grid_index", "grid_label"]
             )["reaction_time"].mean().reset_index()
 
-            coupon_overall = device_data.groupby(
+            # 整體平均（所有眼鏡合併）
+            coupon_overall = device_coupon.groupby(
                 ["grid_index", "grid_label"]
             )["reaction_time"].mean().reset_index()
 
             results["coupon_reaction_time"] = {
-                "per_device": user_coupon.to_dict(orient="records"),
-                "overall_avg": coupon_overall.to_dict(orient="records")
+                "per_device": device_coupon.to_dict(orient="records"),  # ✅ 每種眼鏡的平均
+                "overall_avg": coupon_overall.to_dict(orient="records") # ✅ 所有眼鏡的平均
             }
+
 
         # ---------- 6. 協作延遲 ----------
         collab_levels = ["eye", "voice", "point", "grab",
