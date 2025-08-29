@@ -169,34 +169,59 @@ def aggregate():
             }
             coupon_data["grid_label"] = coupon_data["grid_index"].map(grid_map)
 
-            # 先算每位受試者在每個九宮格的平均
+            # 每位受試者
             user_coupon = coupon_data.groupby(
                 ["user_id", "device_type", "grid_index", "grid_label"]
             )["reaction_time"].mean().reset_index()
 
-            # 👇 再跨受試者平均 → 每種眼鏡的平均
+            # 👇 每種眼鏡平均（跨受試者）
             device_coupon = user_coupon.groupby(
                 ["device_type", "grid_index", "grid_label"]
             )["reaction_time"].mean().reset_index()
 
-            # 整體平均（所有眼鏡合併）
+            # 整體平均
             coupon_overall = device_coupon.groupby(
                 ["grid_index", "grid_label"]
             )["reaction_time"].mean().reset_index()
 
             results["coupon_reaction_time"] = {
-                "per_device": device_coupon.to_dict(orient="records"),  # ✅ 每種眼鏡的平均
-                "overall_avg": coupon_overall.to_dict(orient="records") # ✅ 所有眼鏡的平均
+                "per_device": device_coupon.to_dict(orient="records"),
+                "overall_avg": coupon_overall.to_dict(orient="records")
             }
-
 
         # ---------- 6. 協作延遲 ----------
         collab_levels = ["eye", "voice", "point", "grab",
                          "eye+voice", "hand+voice", "hand+eye", "hand+eye+voice"]
         collab_data = df[df["level_name"].isin(collab_levels)].copy()
         if not collab_data.empty:
-            device_collab = collab_data.groupby(["device_type", "level_name"])["reaction_time"].mean().reset_index()
-            collab_overall = device_collab.groupby("level_name")["reaction_time"].mean().reset_index()
+            # 英文 → 中文對照
+            name_map = {
+                "eye": "眼動",
+                "voice": "語音",
+                "point": "手點擊",
+                "grab": "手拖移",
+                "eye+voice": "眼動+語音",
+                "hand+voice": "手+語音",
+                "hand+eye": "手+眼動",
+                "hand+eye+voice": "手+眼動+語音"
+            }
+            collab_data["level_label"] = collab_data["level_name"].map(name_map)
+
+            # 每位受試者
+            user_collab = collab_data.groupby(
+                ["user_id", "device_type", "level_label"]
+            )["reaction_time"].mean().reset_index()
+
+            # 👇 跨使用者，取裝置平均
+            device_collab = user_collab.groupby(
+                ["device_type", "level_label"]
+            )["reaction_time"].mean().reset_index()
+
+            # 整體平均
+            collab_overall = device_collab.groupby(
+                "level_label"
+            )["reaction_time"].mean().reset_index()
+
             results["collaboration_latency"] = {
                 "per_device": device_collab.to_dict(orient="records"),
                 "overall_avg": collab_overall.to_dict(orient="records")
