@@ -169,7 +169,7 @@ def aggregate():
             }
             coupon_data["grid_label"] = coupon_data["grid_index"].map(grid_map)
 
-            # ⚠️ 平均到裝置層級，不分 user
+            # 平均到裝置層級（不分 user）
             device_coupon = coupon_data.groupby(
                 ["device_type", "grid_index", "grid_label"]
             )["reaction_time"].mean().reset_index()
@@ -183,7 +183,7 @@ def aggregate():
                 "overall_avg": coupon_overall.to_dict(orient="records")
             }
 
-        # ---------- 6. 協作延遲 (中文化 label) ----------
+        # ---------- 6. 協作延遲 (含單/多互動平均) ----------
         collab_levels = ["eye", "voice", "point", "grab",
                          "eye+voice", "hand+voice", "hand+eye", "hand+eye+voice"]
         collab_data = df[df["level_name"].isin(collab_levels)].copy()
@@ -208,18 +208,26 @@ def aggregate():
                 ["level_name", "level_label"]
             )["reaction_time"].mean().reset_index()
 
-            # 新增單一互動 / 多互動平均
+            # 分成單一互動 & 多互動
             single_levels = ["eye", "voice", "point", "grab"]
             multi_levels = ["eye+voice", "hand+voice", "hand+eye", "hand+eye+voice"]
 
-            single_data = collab_data[collab_data["level_name"].isin(single_levels)]
-            multi_data = collab_data[collab_data["level_name"].isin(multi_levels)]
+            # 每個裝置各自的平均
+            device_single = collab_data[collab_data["level_name"].isin(single_levels)] \
+                .groupby("device_type")["reaction_time"].mean().reset_index() \
+                .rename(columns={"reaction_time": "single_interaction_avg"})
+
+            device_multi = collab_data[collab_data["level_name"].isin(multi_levels)] \
+                .groupby("device_type")["reaction_time"].mean().reset_index() \
+                .rename(columns={"reaction_time": "multi_interaction_avg"})
+
+            # 合併結果
+            device_summary = pd.merge(device_single, device_multi, on="device_type", how="outer")
 
             results["collaboration_latency"] = {
                 "per_device": device_collab.to_dict(orient="records"),
                 "overall_avg": collab_overall.to_dict(orient="records"),
-                "single_interaction_avg": single_data["reaction_time"].mean() if not single_data.empty else None,
-                "multi_interaction_avg": multi_data["reaction_time"].mean() if not multi_data.empty else None
+                "per_device_summary": device_summary.to_dict(orient="records")
             }
 
         return jsonify(results), 200
