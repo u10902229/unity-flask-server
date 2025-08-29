@@ -208,9 +208,18 @@ def aggregate():
                 ["level_name", "level_label"]
             )["reaction_time"].mean().reset_index()
 
+            # 新增單一互動 / 多互動平均
+            single_levels = ["eye", "voice", "point", "grab"]
+            multi_levels = ["eye+voice", "hand+voice", "hand+eye", "hand+eye+voice"]
+
+            single_data = collab_data[collab_data["level_name"].isin(single_levels)]
+            multi_data = collab_data[collab_data["level_name"].isin(multi_levels)]
+
             results["collaboration_latency"] = {
                 "per_device": device_collab.to_dict(orient="records"),
-                "overall_avg": collab_overall.to_dict(orient="records")
+                "overall_avg": collab_overall.to_dict(orient="records"),
+                "single_interaction_avg": single_data["reaction_time"].mean() if not single_data.empty else None,
+                "multi_interaction_avg": multi_data["reaction_time"].mean() if not multi_data.empty else None
             }
 
         return jsonify(results), 200
