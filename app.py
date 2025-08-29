@@ -173,7 +173,11 @@ def aggregate():
                 ["user_id", "device_type", "grid_index", "grid_label"]
             )["reaction_time"].mean().reset_index()
 
-            coupon_overall = coupon_data.groupby(
+            device_coupon = user_coupon.groupby(
+                ["device_type", "grid_index", "grid_label"]
+            )["reaction_time"].mean().reset_index()
+
+            coupon_overall = device_data.groupby(
                 ["grid_index", "grid_label"]
             )["reaction_time"].mean().reset_index()
 
