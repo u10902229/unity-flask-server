@@ -169,8 +169,9 @@ def aggregate():
             }
             coupon_data["grid_label"] = coupon_data["grid_index"].map(grid_map)
 
-            user_coupon = coupon_data.groupby(
-                ["user_id", "device_type", "grid_index", "grid_label"]
+            # ⚠️ 平均到裝置層級，不分 user
+            device_coupon = coupon_data.groupby(
+                ["device_type", "grid_index", "grid_label"]
             )["reaction_time"].mean().reset_index()
 
             coupon_overall = coupon_data.groupby(
@@ -178,11 +179,11 @@ def aggregate():
             )["reaction_time"].mean().reset_index()
 
             results["coupon_reaction_time"] = {
-                "per_device": user_coupon.to_dict(orient="records"),
+                "per_device": device_coupon.to_dict(orient="records"),
                 "overall_avg": coupon_overall.to_dict(orient="records")
             }
 
-        # ---------- 6. 協作延遲 ----------
+        # ---------- 6. 協作延遲 (中文化 label) ----------
         collab_levels = ["eye", "voice", "point", "grab",
                          "eye+voice", "hand+voice", "hand+eye", "hand+eye+voice"]
         collab_data = df[df["level_name"].isin(collab_levels)].copy()
