@@ -189,14 +189,14 @@ def aggregate():
         collab_data = df[df["level_name"].isin(collab_levels)].copy()
         if not collab_data.empty:
             name_map = {
-                "eye": "眼動",
-                "voice": "語音",
-                "point": "手點擊",
-                "grab": "手拖移",
+                "eye": "眼動互動",
+                "voice": "語音互動",
+                "point": "手勢點擊",
+                "grab": "手勢拖移",
                 "eye+voice": "眼動+語音",
-                "hand+voice": "手+語音",
-                "hand+eye": "手+眼動",
-                "hand+eye+voice": "手+眼動+語音"
+                "hand+voice": "手勢+語音",
+                "hand+eye": "手勢+眼動",
+                "hand+eye+voice": "手勢+眼動+語音"
             }
             collab_data["level_label"] = collab_data["level_name"].map(name_map)
 
