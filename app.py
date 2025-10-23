@@ -48,9 +48,12 @@ def upload():
     print("📝 已記錄\n")
 
     def get(key):
-        return str(data.get(key, "") or "")
+        value = data.get(key, "")
+        if value == 0 or value == 0.0:
+            return "0"
+        return str(value) if value != "" else ""
 
-    # ⚠️ 必須和 Google Sheet 表頭完全一致（21 欄）
+    # ⚠️ 必須和 Google Sheet 表頭完全一致
     row = [
         get("user_id"),
         get("device_type"),
@@ -65,6 +68,7 @@ def upload():
     ]
 
     print("📤 準備寫入 Google Sheets:", row)
+
     print("➡️ 欄位數:", len(row))
 
     # 1️⃣ 本地寫 CSV
