@@ -101,7 +101,7 @@ def aggregate():
         if len(rows) <= 1:
             return jsonify({"message": "Google Sheet is empty"}), 200
 
-        df = pd.DataFrame(rows[1:], columns=rows[0])  # 第一列當表頭
+        df = pd.DataFrame(rows[1:], columns=rows[0])
         if df.empty:
             return jsonify({"message": "Google Sheet empty"}), 200
 
@@ -120,7 +120,6 @@ def aggregate():
             for c in cols:
                 eye_data[c] = pd.to_numeric(eye_data[c], errors="coerce")
             eye_data = eye_data.dropna(subset=cols)
-
             if not eye_data.empty:
                 eye_data["error"] = np.sqrt(
                     (eye_data["gaze_target_x"] - eye_data["gaze_x"])**2 +
@@ -130,7 +129,7 @@ def aggregate():
                 device_eye = eye_data.groupby("device_type")["error"].mean().reset_index()
                 results["eye_accuracy"] = {
                     "per_device": device_eye.to_dict(orient="records"),
-                    "overall_avg": device_eye["error"].mean()
+                    "overall_avg": round(device_eye["error"].mean(), 6)
                 }
 
         # ---------- 2. 語音 ----------
@@ -140,7 +139,7 @@ def aggregate():
             device_voice.rename(columns={"interaction_result": "accuracy"}, inplace=True)
             results["voice_accuracy"] = {
                 "per_device": device_voice.to_dict(orient="records"),
-                "overall_avg": device_voice["accuracy"].mean()
+                "overall_avg": round(device_voice["accuracy"].mean(), 6)
             }
 
         # ---------- 3. 點擊 ----------
@@ -150,7 +149,7 @@ def aggregate():
             device_point.rename(columns={"interaction_result": "accuracy"}, inplace=True)
             results["hand_point_accuracy"] = {
                 "per_device": device_point.to_dict(orient="records"),
-                "overall_avg": device_point["accuracy"].mean()
+                "overall_avg": round(device_point["accuracy"].mean(), 6)
             }
 
         # ---------- 4. 拖移 ----------
@@ -160,7 +159,7 @@ def aggregate():
             device_grab.rename(columns={"interaction_result": "accuracy"}, inplace=True)
             results["hand_drag_accuracy"] = {
                 "per_device": device_grab.to_dict(orient="records"),
-                "overall_avg": device_grab["accuracy"].mean()
+                "overall_avg": round(device_grab["accuracy"].mean(), 6)
             }
 
         # ---------- 5. 優惠券九宮格 ----------
@@ -173,7 +172,6 @@ def aggregate():
             }
             coupon_data["grid_label"] = coupon_data["grid_index"].map(grid_map)
 
-            # 平均到裝置層級（不分 user）
             device_coupon = coupon_data.groupby(
                 ["device_type", "grid_index", "grid_label"]
             )["reaction_time"].mean().reset_index()
@@ -187,7 +185,7 @@ def aggregate():
                 "overall_avg": coupon_overall.to_dict(orient="records")
             }
 
-        # ---------- 6. 協作延遲 (含單/多互動平均) ----------
+        # ---------- 6. 協作延遲 ----------
         collab_levels = ["eye", "voice", "point", "grab",
                          "eye+voice", "hand+voice", "hand+eye", "hand+eye+voice"]
         collab_data = df[df["level_name"].isin(collab_levels)].copy()
@@ -203,29 +201,22 @@ def aggregate():
                 "hand+eye+voice": "手勢+眼動+語音"
             }
             collab_data["level_label"] = collab_data["level_name"].map(name_map)
-
             device_collab = collab_data.groupby(
                 ["device_type", "level_name", "level_label"]
             )["reaction_time"].mean().reset_index()
-
             collab_overall = collab_data.groupby(
                 ["level_name", "level_label"]
             )["reaction_time"].mean().reset_index()
 
-            # 分成單一互動 & 多互動
             single_levels = ["eye", "voice", "point", "grab"]
             multi_levels = ["eye+voice", "hand+voice", "hand+eye", "hand+eye+voice"]
 
-            # 每個裝置各自的平均
             device_single = collab_data[collab_data["level_name"].isin(single_levels)] \
                 .groupby("device_type")["reaction_time"].mean().reset_index() \
                 .rename(columns={"reaction_time": "single_interaction_avg"})
-
             device_multi = collab_data[collab_data["level_name"].isin(multi_levels)] \
                 .groupby("device_type")["reaction_time"].mean().reset_index() \
                 .rename(columns={"reaction_time": "multi_interaction_avg"})
-
-            # 合併結果
             device_summary = pd.merge(device_single, device_multi, on="device_type", how="outer")
 
             results["collaboration_latency"] = {
@@ -234,7 +225,16 @@ def aggregate():
                 "per_device_summary": device_summary.to_dict(orient="records")
             }
 
-        return jsonify(results), 200
+        # ⚠️ 關鍵：統一轉為 JSON，排除 NaN
+        safe_json = json.dumps(results, ensure_ascii=False, indent=2, default=str)
+        safe_json = safe_json.replace("NaN", "null")
+
+        from flask import Response
+        return Response(safe_json, mimetype='application/json')
 
     except Exception as e:
+        import traceback
+        print("❌ /aggregate 發生錯誤:", e)
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
+
