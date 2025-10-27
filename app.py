@@ -186,6 +186,7 @@ def aggregate():
         else:
             collab_data["reaction_time"] = pd.to_numeric(collab_data["reaction_time"], errors="coerce")
             collab_data = collab_data.dropna(subset=["reaction_time"])
+
             if collab_data.empty:
                 results["collaboration_latency"] = {"message": "No valid reaction_time data"}
             else:
@@ -200,24 +201,31 @@ def aggregate():
                     "hand+eye+voice": "手勢+眼動+語音"
                 }
                 collab_data["level_label"] = collab_data["level_name"].map(name_map)
-                device_collab = collab_data.groupby(
+
+                # --- 每裝置 + 關卡 平均一次 ---
+                per_level_avg = collab_data.groupby(
                     ["device_type", "level_name", "level_label"]
                 )["reaction_time"].mean().reset_index()
-                collab_overall = collab_data.groupby(
-                    ["level_name", "level_label"]
-                )["reaction_time"].mean().reset_index()
+
+                # --- 單一互動平均（權重一致）---
                 single_levels = ["eye", "voice", "point", "grab"]
-                multi_levels = ["eye+voice", "hand+voice", "hand+eye", "hand+eye+voice"]
-                device_single = collab_data[collab_data["level_name"].isin(single_levels)] \
+                device_single = per_level_avg[per_level_avg["level_name"].isin(single_levels)] \
                     .groupby("device_type")["reaction_time"].mean().reset_index() \
                     .rename(columns={"reaction_time": "single_interaction_avg"})
-                device_multi = collab_data[collab_data["level_name"].isin(multi_levels)] \
+
+                # --- 多互動平均（權重一致）---
+                multi_levels = ["eye+voice", "hand+voice", "hand+eye", "hand+eye+voice"]
+                device_multi = per_level_avg[per_level_avg["level_name"].isin(multi_levels)] \
                     .groupby("device_type")["reaction_time"].mean().reset_index() \
                     .rename(columns={"reaction_time": "multi_interaction_avg"})
+
                 device_summary = pd.merge(device_single, device_multi, on="device_type", how="outer")
 
+                # --- 各關卡整體平均 ---
+                collab_overall = per_level_avg.groupby(["level_name", "level_label"])["reaction_time"].mean().reset_index()
+
                 results["collaboration_latency"] = {
-                    "per_device": device_collab.to_dict(orient="records"),
+                    "per_device": per_level_avg.to_dict(orient="records"),
                     "overall_avg": collab_overall.to_dict(orient="records"),
                     "per_device_summary": device_summary.to_dict(orient="records")
                 }
